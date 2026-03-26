@@ -171,7 +171,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 .err-box { margin: 24px; background: rgba(255,68,68,0.08); border: 2px solid var(--danger); border-radius: 16px; padding: 24px; font-size: 19px; color: var(--danger); line-height: 1.7; }
 </style>
-<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 </head>
 <body>
 
@@ -200,13 +200,8 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
     <!-- バーコードカメラ -->
     <div id="barcode-cam-wrap" style="display:none; padding:0 0 16px;">
-      <div style="position:relative; width:100%; background:#000; aspect-ratio:4/3;">
-        <video id="barcode-video" style="width:100%;height:100%;object-fit:cover;display:block;" autoplay playsinline muted></video>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;">
-          <div style="width:70%;height:25%;border:4px solid #3a8fff;border-radius:10px;box-shadow:0 0 0 9999px rgba(0,0,0,0.5);"></div>
-        </div>
-        <div style="position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:16px;color:rgba(255,255,255,0.85);">バーコードを枠内に合わせてください</div>
-      </div>
+      <div id="barcode-reader" style="width:100%;"></div>
+      <div style="text-align:center;padding:10px;font-size:16px;color:var(--text2);">バーコードを枠内に合わせてください</div>
       <button class="btn btn-gray" style="margin:12px 24px 0; width:calc(100% - 48px);" onclick="stopBarcodeScanner()">✕ キャンセル</button>
     </div>
   </div>
@@ -353,25 +348,32 @@ async function startBarcodeScanner() {
   const wrap = document.getElementById('barcode-cam-wrap');
   wrap.style.display = 'block';
   try {
-    const codeReader = new ZXingLibrary.BrowserMultiFormatReader();
-    barcodeScanner = codeReader;
-    const videoEl = document.getElementById('barcode-video');
-    await codeReader.decodeFromVideoDevice(null, videoEl, (result, err) => {
-      if (result) {
-        document.getElementById('barcodeInput').value = result.getText();
+    barcodeScanner = new Html5Qrcode('barcode-reader');
+    await barcodeScanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 280, height: 100 }, formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.QR_CODE
+      ]},
+      (decodedText) => {
+        document.getElementById('barcodeInput').value = decodedText;
         stopBarcodeScanner();
         searchBarcode();
-      }
-    });
+      },
+      (err) => {}
+    );
   } catch(e) {
     alert('スキャンエラー: ' + e.message);
     stopBarcodeScanner();
   }
 }
 
-function stopBarcodeScanner() {
+async function stopBarcodeScanner() {
   if (barcodeScanner) {
-    barcodeScanner.reset();
+    try { await barcodeScanner.stop(); } catch(e) {}
     barcodeScanner = null;
   }
   document.getElementById('barcode-cam-wrap').style.display = 'none';
