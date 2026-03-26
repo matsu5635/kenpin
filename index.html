@@ -385,8 +385,13 @@ async function stopBarcodeScanner() {
 
 // バーコード検索
 async function searchBarcode() {
-  const bc = $('barcodeInput').value.trim();
+  let bc = $('barcodeInput').value.trim();
   if (!bc) return;
+  // 3・4文字目が"00"の場合は"-"に変換（例：J100025072→J1-25072）
+  if (bc.length >= 4 && bc.substring(2, 4) === '00') {
+    bc = bc.substring(0, 2) + '-' + bc.substring(4);
+  }
+  $('barcodeInput').value = bc; // 変換後の値をテキストボックスにも反映
   S.barcode = bc;
   $('barcode-msg').innerHTML = '<div style="text-align:center;padding:32px;font-size:20px;color:var(--text2);">🔍 検索中...</div>';
   try {
