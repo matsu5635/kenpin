@@ -171,7 +171,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 .err-box { margin: 24px; background: rgba(255,68,68,0.08); border: 2px solid var(--danger); border-radius: 16px; padding: 24px; font-size: 19px; color: var(--danger); line-height: 1.7; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/zxing-js/0.21.3/zxing.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
 </head>
 <body>
 
@@ -353,7 +353,7 @@ async function startBarcodeScanner() {
   const wrap = document.getElementById('barcode-cam-wrap');
   wrap.style.display = 'block';
   try {
-    const codeReader = new ZXing.BrowserMultiFormatReader();
+    const codeReader = new ZXingLibrary.BrowserMultiFormatReader();
     barcodeScanner = codeReader;
     const videoEl = document.getElementById('barcode-video');
     await codeReader.decodeFromVideoDevice(null, videoEl, (result, err) => {
