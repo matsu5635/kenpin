@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>出荷検品</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+:root {
+  --bg: #10121a;
+  --surface: #1c1f2e;
+  --border: #2a2e45;
+  --accent: #3a8fff;
+  --warn: #ffaa00;
+  --danger: #ff4444;
+  --success: #22cc66;
+  --text: #f2f4ff;
+  --text2: #7a85aa;
+  --lot: #ffcc00;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Sans JP', sans-serif; }
+
+.screen { display: none; position: fixed; inset: 0; flex-direction: column; background: var(--bg); overflow: hidden; }
+.screen.active { display: flex; }
+
+.topbar {
+  background: var(--surface);
+  border-bottom: 3px solid var(--border);
+  padding: 22px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.topbar-title { font-size: 28px; font-weight: 900; color: var(--accent); }
+.topbar-title span { color: #fff; }
+.worker-box { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.worker-lbl { font-size: 13px; color: var(--text2); }
+.worker-sel {
+  background: var(--bg);
+  color: var(--text);
+  border: 2px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-family: inherit;
+  max-width: 160px;
+}
+
+.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+
+.foot {
+  padding: 20px 24px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  background: var(--surface);
+  border-top: 3px solid var(--border);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.btn {
+  width: 100%;
+  padding: 28px;
+  border: none;
+  border-radius: 18px;
+  font-size: 24px;
+  font-weight: 900;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: transform 0.1s, filter 0.1s;
+}
+.btn:active { transform: scale(0.96); filter: brightness(0.8); }
+.btn-blue  { background: var(--accent);  color: #fff; }
+.btn-green { background: var(--success); color: #fff; }
+.btn-red   { background: var(--danger);  color: #fff; }
+.btn-gray  { background: var(--surface); color: var(--text2); border: 2px solid var(--border); font-size: 20px; padding: 22px; }
+
+.scan-hero { text-align: center; padding: 60px 28px 40px; }
+.scan-icon  { font-size: 100px; margin-bottom: 20px; }
+.scan-title { font-size: 40px; font-weight: 900; margin-bottom: 12px; }
+.scan-sub   { font-size: 20px; color: var(--text2); }
+
+.field-row {
+  display: flex;
+  align-items: center;
+  padding: 24px 28px;
+  border-bottom: 2px solid var(--border);
+  gap: 20px;
+  background: var(--surface);
+}
+.field-row:first-of-type { border-top: 2px solid var(--border); }
+.field-lbl { font-size: 20px; font-weight: 700; color: var(--warn); min-width: 90px; flex-shrink: 0; }
+.field-input {
+  flex: 1;
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 22px 20px;
+  font-size: 26px;
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  outline: none;
+}
+.field-input:focus { border-color: var(--accent); }
+.field-input::placeholder { color: var(--text2); font-size: 18px; font-family: 'Noto Sans JP', sans-serif; }
+
+.info-table { background: var(--surface); border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); margin-bottom: 28px; }
+.info-row { display: flex; align-items: center; padding: 24px 28px; border-bottom: 2px solid var(--border); gap: 20px; }
+.info-row:last-child { border-bottom: none; }
+.info-lbl { font-size: 19px; color: var(--text2); min-width: 90px; flex-shrink: 0; font-weight: 700; }
+.info-val { font-size: 21px; font-weight: 700; flex: 1; word-break: break-all; }
+.info-val.accent { color: var(--accent); font-family: 'Share Tech Mono'; font-size: 24px; }
+.info-val.ok   { color: var(--success); font-size: 24px; }
+.info-val.ng   { color: var(--danger);  font-size: 24px; }
+.info-val.warn { color: var(--warn);    font-size: 24px; }
+.info-val.lot  { color: var(--lot); font-family: 'Share Tech Mono'; font-size: 36px; font-weight: 900; }
+
+.sec-head { font-size: 16px; color: var(--text2); letter-spacing: 2px; text-transform: uppercase; padding: 20px 28px 10px; }
+
+.lot-card { background: var(--surface); border-top: 2px solid var(--border); border-bottom: 2px solid var(--border); margin-bottom: 20px; padding: 28px; }
+.lot-card.done { opacity: 0.4; }
+.lot-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+.lot-num  { font-family: 'Share Tech Mono'; font-size: 52px; font-weight: 900; color: var(--lot); line-height: 1; }
+.lot-name { font-size: 18px; color: var(--text2); margin-top: 8px; }
+.lot-cnt-lbl { font-size: 16px; color: var(--text2); text-align: right; margin-bottom: 4px; }
+.lot-cnt-val { font-family: 'Share Tech Mono'; font-size: 48px; font-weight: 900; color: var(--success); text-align: right; }
+.lot-btn { width: 100%; padding: 24px; background: var(--accent); color: #fff; border: none; border-radius: 16px; font-size: 22px; font-weight: 900; font-family: inherit; cursor: pointer; }
+.lot-btn:active { filter: brightness(0.8); }
+.lot-done { text-align: center; color: var(--success); font-size: 22px; font-weight: 900; padding: 16px; background: rgba(34,204,102,0.08); border-radius: 14px; }
+
+.stepbar { display: flex; gap: 10px; padding: 20px 28px 0; flex-shrink: 0; }
+.seg { flex: 1; height: 8px; background: var(--border); border-radius: 4px; }
+.seg.active { background: var(--accent); }
+.seg.done   { background: var(--success); }
+
+.cam-info { padding: 16px 28px 12px; flex-shrink: 0; }
+.cam-step-lbl { font-size: 15px; color: var(--text2); letter-spacing: 1px; margin-bottom: 6px; }
+.cam-item { font-size: 24px; font-weight: 700; }
+.cam-lot  { font-family: 'Share Tech Mono'; font-size: 40px; font-weight: 900; color: var(--lot); }
+
+.cam-body { flex: 1; position: relative; background: #000; overflow: hidden; min-height: 0; }
+.cam-body video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.cam-frame { width: 74%; aspect-ratio: 4/3; border: 4px solid rgba(255,255,255,0.75); border-radius: 16px; box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); }
+.cam-hint { position: absolute; bottom: 18px; left: 0; right: 0; text-align: center; font-size: 17px; color: rgba(255,255,255,0.85); pointer-events: none; }
+
+.loading-body { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 32px; }
+.loader { width: 80px; height: 80px; border: 7px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-txt { font-size: 22px; color: var(--text2); text-align: center; line-height: 1.8; }
+
+.result-hero { text-align: center; padding: 40px 28px 24px; }
+.result-icon { font-size: 88px; margin-bottom: 14px; }
+.result-ttl  { font-size: 36px; font-weight: 900; }
+.result-ttl.ok   { color: var(--success); }
+.result-ttl.ng   { color: var(--danger); }
+.result-ttl.warn { color: var(--warn); }
+
+.note-box { margin: 0 24px 20px; border-radius: 16px; padding: 20px 24px; font-size: 19px; line-height: 1.8; border: 2px solid; }
+.note-box.warn   { background: rgba(255,170,0,0.08);  border-color: var(--warn);   color: var(--warn); }
+.note-box.danger { background: rgba(255,68,68,0.08);  border-color: var(--danger); color: var(--danger); }
+
+.err-box { margin: 24px; background: rgba(255,68,68,0.08); border: 2px solid var(--danger); border-radius: 16px; padding: 24px; font-size: 19px; color: var(--danger); line-height: 1.7; }
+</style>
+</head>
+<body>
+
+<!-- ① バーコードスキャン -->
+<div class="screen active" id="screen-barcode">
+  <div class="topbar">
+    <div class="topbar-title">📦 出荷<span>検品</span></div>
+    <div class="worker-box">
+      <span class="worker-lbl">作業員</span>
+      <select class="worker-sel" id="workerSelect"><option>読込中...</option></select>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="scan-hero">
+      <div class="scan-icon">🔖</div>
+      <div class="scan-title">伝票スキャン</div>
+      <div class="scan-sub">受注Noをスキャンまたは入力</div>
+    </div>
+    <div class="field-row">
+      <div class="field-lbl">受注No</div>
+      <input type="text" class="field-input" id="barcodeInput"
+        placeholder="スキャンまたは入力" autocomplete="off"
+        onkeydown="if(event.key==='Enter') searchBarcode()">
+    </div>
+    <div id="barcode-msg" style="padding:16px 24px;"></div>
+  </div>
+  <div class="foot">
+    <button class="btn btn-blue" onclick="searchBarcode()">🔍 検索する</button>
+  </div>
+</div>
+
+<!-- ② 梱包リスト -->
+<div class="screen" id="screen-lotlist">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title" style="color:#fff;">📋 梱包リスト</div>
+      <div style="font-size:15px;color:var(--text2);margin-top:4px;" id="topbar-bc"></div>
+    </div>
+  </div>
+  <div class="scroll">
+    <div class="sec-head">注文情報</div>
+    <div class="info-table" id="orderInfo"></div>
+    <div class="sec-head">Lotリスト</div>
+    <div id="lotList" style="padding-bottom:16px;"></div>
+  </div>
+  <div class="foot" id="lotlist-foot">
+    <button class="btn btn-gray" onclick="backToScan()">← 伝票スキャンへ戻る</button>
+  </div>
+</div>
+
+<!-- ③ 荷姿撮影 -->
+<div class="screen" id="screen-appear">
+  <div class="stepbar"><div class="seg active"></div><div class="seg"></div></div>
+  <div class="cam-info">
+    <div class="cam-step-lbl">STEP 1 / 2 — 荷姿撮影</div>
+    <div class="cam-item" id="appear-item"></div>
+    <div class="cam-lot"  id="appear-lot"></div>
+  </div>
+  <div class="cam-body">
+    <video id="cam-appear" autoplay playsinline muted></video>
+    <div class="cam-overlay"><div class="cam-frame"></div></div>
+    <div class="cam-hint">枠内に製品全体を入れて撮影</div>
+  </div>
+  <div class="foot">
+    <button class="btn btn-blue" onclick="captureAppear()">📷 荷姿を撮影する</button>
+    <button class="btn btn-gray" onclick="goToLotList()">← 戻る</button>
+  </div>
+</div>
+
+<!-- ④ Lot撮影 -->
+<div class="screen" id="screen-lot">
+  <div class="stepbar"><div class="seg done"></div><div class="seg active"></div></div>
+  <div class="cam-info">
+    <div class="cam-step-lbl">STEP 2 / 2 — Lot番号撮影</div>
+    <div style="font-size:18px;color:var(--text2);margin-bottom:4px;">伝票のLot番号</div>
+    <div class="cam-lot" id="lot-target" style="font-size:52px;"></div>
+  </div>
+  <div class="cam-body">
+    <video id="cam-lot" autoplay playsinline muted></video>
+    <div class="cam-overlay"><div class="cam-frame"></div></div>
+    <div class="cam-hint">Lotラベルを枠内に合わせて撮影</div>
+  </div>
+  <div class="foot">
+    <button class="btn btn-blue" onclick="captureLot()">📷 Lot番号を撮影する</button>
+    <button class="btn btn-gray" onclick="goToAppear()">← 戻る</button>
+  </div>
+</div>
+
+<!-- ⑤ 判定中 -->
+<div class="screen" id="screen-loading">
+  <div class="topbar"><div class="topbar-title" style="color:#fff;">🤖 AI判定中...</div></div>
+  <div class="loading-body">
+    <div class="loader"></div>
+    <div class="loading-txt">外観・Lot番号を確認中...<br>しばらくお待ちください</div>
+  </div>
+</div>
+
+<!-- ⑥ 結果 -->
+<div class="screen" id="screen-result">
+  <div class="topbar"><div class="topbar-title" id="result-topbar" style="color:#fff;"></div></div>
+  <div class="scroll">
+    <div class="result-hero">
+      <div class="result-icon" id="result-icon"></div>
+      <div class="result-ttl"  id="result-ttl"></div>
+    </div>
+    <div class="info-table" id="result-table"></div>
+    <div id="result-note" style="margin-top:16px;"></div>
+  </div>
+  <div class="foot" id="result-foot"></div>
+</div>
+
+<canvas id="canvas" style="display:none;"></canvas>
+
+<script>
+// ===== GAS APIのURL（デプロイ後に設定）=====
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxEmY2gDgLRv4kEOGqdmIZ33eTLancvRIuhAxM8zx3g57JV8uuXeg6R4yLSQQdDxlI2/exec';
+
+let S = {
+  worker:'', barcode:'', data:null,
+  lotIdx:0, lot:null, prog:{},
+  masterB64:null, masterMime:null,
+  appearB64:null, lotB64:null, stream:null
+};
+
+// ===== API呼び出し =====
+async function gasGet(params) {
+  const url = GAS_URL + '?' + new URLSearchParams(params);
+  const res = await fetch(url);
+  return await res.json();
+}
+
+async function gasPost(body) {
+  const res = await fetch(GAS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  return await res.json();
+}
+
+// ===== 初期化 =====
+window.onload = async () => {
+  try {
+    const r = await gasGet({ action: 'getWorkers' });
+    if (r.success && r.workers.length) {
+      const sel = document.getElementById('workerSelect');
+      sel.innerHTML = r.workers.map(w => `<option>${w}</option>`).join('');
+      S.worker = r.workers[0];
+      sel.onchange = () => S.worker = sel.value;
+    }
+  } catch(e) {
+    console.error('作業員取得エラー:', e);
+  }
+};
+
+const $ = id => document.getElementById(id);
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+
+// バーコード検索
+async function searchBarcode() {
+  const bc = $('barcodeInput').value.trim();
+  if (!bc) return;
+  S.barcode = bc;
+  $('barcode-msg').innerHTML = '<div style="text-align:center;padding:32px;font-size:20px;color:var(--text2);">🔍 検索中...</div>';
+  try {
+    const r = await gasGet({ action: 'search', barcode: bc });
+    $('barcode-msg').innerHTML = '';
+    if (!r.success) {
+      $('barcode-msg').innerHTML = `<div class="err-box">❌ ${r.error}</div>`;
+      return;
+    }
+    S.data = r.data; S.barcode = r.barcode; S.prog = {};
+    showLotList();
+  } catch(e) {
+    $('barcode-msg').innerHTML = `<div class="err-box">❌ 通信エラー: ${e.message}</div>`;
+  }
+}
+
+// 梱包リスト
+function showLotList() {
+  const data = S.data;
+  if (!data || !data.length) return;
+  const f = data[0];
+  $('topbar-bc').textContent = S.barcode;
+  $('orderInfo').innerHTML = `
+    <div class="info-row"><div class="info-lbl">納入先</div><div class="info-val">${f['納入先名']||f['得意先名']||'---'}</div></div>
+    <div class="info-row"><div class="info-lbl">納期</div><div class="info-val">${f['納期']||'---'}</div></div>
+    <div class="info-row"><div class="info-lbl">品名</div><div class="info-val">${f['商品名']||'---'}</div></div>
+    <div class="info-row"><div class="info-lbl">伝票No</div><div class="info-val accent">${S.barcode}</div></div>
+  `;
+  const list = $('lotList');
+  list.innerHTML = '';
+  let allDone = true;
+
+  data.forEach((row, idx) => {
+    const lot   = String(row['ロットNo']||'---');
+    const total = parseInt(row['個数']||0);
+    const comp  = S.prog[lot]||0;
+    const done  = comp >= total;
+    if (!done) allDone = false;
+    const d = document.createElement('div');
+    d.className = `lot-card ${done?'done':''}`;
+    d.innerHTML = `
+      <div class="lot-top">
+        <div><div class="lot-num">${lot}</div><div class="lot-name">${row['商品名']||''}</div></div>
+        <div><div class="lot-cnt-lbl">完了 / 必要</div><div class="lot-cnt-val">${comp} / ${total}</div></div>
+      </div>
+      ${done ? '<div class="lot-done">✅ 完了</div>' : `<button class="lot-btn" onclick="startCheck(${idx})">梱包開始 →</button>`}
+    `;
+    list.appendChild(d);
+  });
+
+  const foot = $('lotlist-foot');
+  if (allDone && Object.keys(S.prog).length > 0) {
+    list.innerHTML += `<div style="text-align:center;padding:40px 28px 8px;"><div style="font-size:88px;">🎉</div><div style="font-size:40px;font-weight:900;color:var(--success);margin-top:12px;">全Lot完了！</div></div>`;
+    foot.innerHTML = `<button class="btn btn-green" onclick="finishAll()">✅ 作業完了・履歴登録</button>`;
+  } else {
+    foot.innerHTML = `<button class="btn btn-gray" onclick="backToScan()">← 伝票スキャンへ戻る</button>`;
+  }
+  show('screen-lotlist');
+}
+
+// 梱包開始
+async function startCheck(idx) {
+  S.lotIdx = idx;
+  S.lot = S.data[idx];
+  const code = String(S.lot['商品コード']||Object.values(S.lot)[8]||'');
+  const name = String(S.lot['商品名']||'---');
+  const lot  = String(S.lot['ロットNo']||'---');
+  $('appear-item').textContent = name;
+  $('appear-lot').textContent  = `Lot: ${lot}`;
+  $('lot-target').textContent  = lot;
+  try {
+    const r = await gasGet({ action: 'getMaster', code });
+    S.masterB64  = r.success ? r.base64   : null;
+    S.masterMime = r.success ? r.mimeType : null;
+  } catch(e) {
+    S.masterB64 = null;
+  }
+  startCam('cam-appear');
+  show('screen-appear');
+}
+
+// カメラ
+function startCam(vid) {
+  stopCam();
+  navigator.mediaDevices.getUserMedia({
+    video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+  }).then(s => {
+    S.stream = s;
+    const v = $(vid);
+    if (v) { v.srcObject = s; v.play(); }
+  }).catch(e => {
+    alert('カメラエラー: ' + e.message + '\nブラウザのカメラ許可を確認してください。');
+  });
+}
+function stopCam() {
+  if (S.stream) { S.stream.getTracks().forEach(t => t.stop()); S.stream = null; }
+}
+
+function snap(vid, cb) {
+  const v = $(vid), c = $('canvas');
+  c.width = v.videoWidth||640; c.height = v.videoHeight||480;
+  c.getContext('2d').drawImage(v, 0, 0);
+  c.toBlob(b => { const r = new FileReader(); r.onloadend = () => cb(r.result.split(',')[1]); r.readAsDataURL(b); }, 'image/jpeg', 0.85);
+}
+
+function captureAppear() {
+  snap('cam-appear', b64 => { S.appearB64 = b64; stopCam(); startCam('cam-lot'); show('screen-lot'); });
+}
+function captureLot() {
+  snap('cam-lot', b64 => { S.lotB64 = b64; stopCam(); runAI(); });
+}
+
+// AI判定
+async function runAI() {
+  show('screen-loading');
+  const name = String(S.lot['商品名']||'');
+  const tLot = String(S.lot['ロットNo']||'');
+  try {
+    const r = await gasPost({
+      action: 'judge',
+      masterB64: S.masterB64, masterMime: S.masterMime,
+      appearB64: S.appearB64, lotB64: S.lotB64,
+      itemName: name, targetLot: tLot
+    });
+    showResult(r, tLot, name);
+  } catch(e) {
+    showErr(e.message);
+  }
+}
+
+// 結果表示
+function showResult(r, tLot, name) {
+  const visual = r.success && r.visual_match;
+  const fLot   = r.success ? (r.camera_lot||'UNKNOWN') : 'UNKNOWN';
+  const tDig   = tLot.replace(/\D/g,'');
+  const fDig   = fLot.replace(/\D/g,'').split('-')[0];
+  const lotOk  = tDig === fDig && fLot !== 'UNKNOWN';
+  const lotUnk = fLot === 'UNKNOWN';
+
+  let icon, ttl, cls, note='', foot='';
+
+  if (!visual) {
+    icon='❌'; ttl='製品が違います'; cls='ng';
+    note = `<div class="note-box danger">製品の混入事故の可能性があります。<br>作業を止めて責任者に確認してください。</div>`;
+    foot = `<button class="btn btn-gray" onclick="goToLotList()">← 梱包リストへ戻る</button>`;
+  } else if (lotUnk) {
+    icon='⚠️'; ttl='Lot番号を確認してください'; cls='warn';
+    note = `<div class="note-box warn">Lot番号が読み取れませんでした。<br>目視で確認し、正しければ承認してください。<br>枝番（例：6011234-1）は同一ロットです。</div>`;
+    foot = `<button class="btn btn-green" onclick="approve()">✅ 承認して合格</button><button class="btn btn-red" onclick="reject()">❌ 却下</button>`;
+  } else if (!lotOk) {
+    icon='⚠️'; ttl='Lot番号を確認してください'; cls='warn';
+    note = `<div class="note-box warn">Lot番号が一致しません。<br>目視で確認し、正しければ承認してください。<br>枝番（例：6011234-1）は同一ロットです。</div>`;
+    foot = `<button class="btn btn-green" onclick="approve()">✅ 承認して合格</button><button class="btn btn-red" onclick="reject()">❌ 却下</button>`;
+  } else {
+    icon='✅'; ttl='合格！'; cls='ok';
+    foot = `<button class="btn btn-green" onclick="next()">次のLotへ →</button>`;
+  }
+
+  $('result-topbar').textContent = cls==='ok'?'✅ 合格':cls==='ng'?'❌ 不合格':'⚠️ 要確認';
+  $('result-icon').textContent = icon;
+  $('result-ttl').textContent  = ttl;
+  $('result-ttl').className    = `result-ttl ${cls}`;
+  $('result-table').innerHTML  = `
+    <div class="info-row"><div class="info-lbl">外観照合</div><div class="info-val ${visual?'ok':'ng'}">${visual?'✅ 一致':'❌ 不一致'}</div></div>
+    <div class="info-row"><div class="info-lbl">品名</div><div class="info-val" style="font-size:19px;">${name}</div></div>
+    <div class="info-row"><div class="info-lbl">Lot(伝票)</div><div class="info-val lot">${tLot}</div></div>
+    <div class="info-row"><div class="info-lbl">Lot(現物)</div><div class="info-val lot ${lotUnk?'warn':lotOk?'ok':'warn'}">${fLot}</div></div>
+  `;
+  $('result-note').innerHTML = note;
+  $('result-foot').innerHTML = foot;
+  show('screen-result');
+}
+
+function approve() { addCount(); }
+function reject()  { showLotList(); }
+function next()    { addCount(); }
+
+function addCount() {
+  const lot = String(S.lot['ロットNo']||'---');
+  S.prog[lot] = (S.prog[lot]||0) + 1;
+  showLotList();
+}
+
+async function finishAll() {
+  if (!confirm('作業完了・履歴を登録しますか？')) return;
+  for (const row of S.data) {
+    const lot  = String(row['ロットNo']||'---');
+    const code = String(Object.values(row)[8]||'');
+    const name = String(row['商品名']||'');
+    await gasPost({ action:'history', worker:S.worker, barcode:S.barcode, itemCode:code, itemName:name, lotNo:lot, count:S.prog[lot]||0 });
+  }
+  alert('✅ 登録完了！');
+  S.data = null; S.prog = {};
+  $('barcodeInput').value = '';
+  show('screen-barcode');
+}
+
+function goToLotList() { stopCam(); showLotList(); }
+function goToAppear()  { stopCam(); startCam('cam-appear'); show('screen-appear'); }
+function backToScan()  { show('screen-barcode'); }
+
+function showErr(e) {
+  $('result-topbar').textContent = '❌ エラー';
+  $('result-icon').textContent = '❌';
+  $('result-ttl').textContent = 'エラーが発生しました';
+  $('result-ttl').className = 'result-ttl ng';
+  $('result-table').innerHTML = '';
+  $('result-note').innerHTML = `<div class="note-box danger">${e}</div>`;
+  $('result-foot').innerHTML = `<button class="btn btn-gray" onclick="goToLotList()">← 戻る</button>`;
+  show('screen-result');
+}
+</script>
+</body>
+</html>
