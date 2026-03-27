@@ -317,8 +317,9 @@ async function gasGet(params) {
 async function gasPost(body) {
   const res = await fetch(GAS_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify(body),
+    redirect: 'follow'
   });
   return await res.json();
 }
