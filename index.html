@@ -387,8 +387,10 @@ async function stopBarcodeScanner() {
 async function searchBarcode() {
   let bc = $('barcodeInput').value.trim();
   if (!bc) return;
-  // 3・4文字目が"00"の場合は"-"に変換（例：J100025072→J1-25072）
-  if (bc.length >= 4 && bc.substring(2, 4) === '00') {
+  // J1の場合は000（3個）を-に、それ以外は00（2個）を-に変換
+  if (bc.substring(0, 2) === 'J1' && bc.length >= 5 && bc.substring(2, 5) === '000') {
+    bc = bc.substring(0, 2) + '-' + bc.substring(5);
+  } else if (bc.length >= 4 && bc.substring(2, 4) === '00') {
     bc = bc.substring(0, 2) + '-' + bc.substring(4);
   }
   $('barcodeInput').value = bc; // 変換後の値をテキストボックスにも反映
