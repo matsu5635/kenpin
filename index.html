@@ -298,7 +298,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 <script>
 // ===== GAS APIのURL（デプロイ後に設定）=====
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbxEmY2gDgLRv4kEOGqdmIZ33eTLancvRIuhAxM8zx3g57JV8uuXeg6R4yLSQQdDxlI2/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbzsSy4AeuOZVUtbbOl-vGxnRNiqKGhsxWowjp7_2xl_2QrhBWM30k0lbh1fk7jCQppzQQ/exec';
 
 let S = {
   worker:'', barcode:'', data:null,
@@ -472,6 +472,19 @@ async function startCheck(idx) {
   } catch(e) {
     S.masterB64 = null;
   }
+
+  // マスタ画像がない場合は警告して戻る
+  if (!S.masterB64) {
+    const warn = document.createElement('div');
+    warn.style.cssText = 'margin:16px 0;background:rgba(255,170,0,0.1);border:2px solid var(--warn);border-radius:14px;padding:20px 24px;font-size:18px;color:var(--warn);line-height:1.7;';
+    warn.innerHTML = `⚠️ <b>${name}</b> のマスタ画像が見つかりません。<br>製品画像フォルダに <b>${code}.jpg</b> を登録してください。`;
+    const list = $('lotList');
+    list.insertBefore(warn, list.firstChild);
+    show('screen-lotlist');
+    setTimeout(() => warn.remove(), 8000);
+    return;
+  }
+
   startCam('cam-appear');
   show('screen-appear');
 }
